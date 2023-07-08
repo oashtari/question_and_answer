@@ -4,8 +4,7 @@ use std::str::FromStr;
 use serde::Serialize;
 use std::collections::HashMap;
 use warp::cors::CorsForbidden;
-use warp::{http::StatusCode, reject::Reject, Filter, Rejection, Reply};
-
+use warp::{http::Method, http::StatusCode, reject::Reject, Filter, Rejection, Reply};
 #[derive(Debug, Serialize)]
 struct Question {
     id: QuestionId,
@@ -47,7 +46,7 @@ async fn get_questions() -> Result<impl warp::Reply, warp::Rejection> {
         QuestionId::from_str("1").expect("No id provided"),
         "First Question".to_string(),
         "Content of question".to_string(),
-        Some(vec!["faq".to_string()]),
+        Some(vec!["FAQ".to_string()]),
     );
 
     match question.id.0.parse::<i32>() {
@@ -57,7 +56,8 @@ async fn get_questions() -> Result<impl warp::Reply, warp::Rejection> {
 }
 
 async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(_InvalidId) = r.find::<CorsForbidden>() {
+    // println!("{:?}", r);
+    if let Some(InvalidId) = r.find() {
         Ok(warp::reply::with_status(
             "No valid ID presented",
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -71,21 +71,13 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let question = Question::new(
-        QuestionId::from_str("1").expect("No id provided"),
-        "First Question".to_string(),
-        "Content of question".to_string(),
-        Some(vec!["faq".to_string()]),
-    );
-
-    let question2 = Question::new(
-        QuestionId::from_str("2").expect("No id provided"),
-        "Second Question".to_string(),
-        "Content of next question".to_string(),
-        Some(vec!["FAQ".to_string()]),
-    );
-    // println!("{:?}", question);
+async fn main()
+// -> Result<(), Box<dyn std::error::Error>>
+{
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_header("content-type")
+        .allow_methods(&[Method::PUT, Method::DELETE, Method::POST, Method::GET]);
 
     let get_items = warp::get()
         .and(warp::path("questions"))
@@ -93,17 +85,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(get_questions)
         .recover(return_error);
 
-    let routes = get_items;
+    let routes = get_items.with(cors);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
-    // let resp = reqwest::get("https:/ /httpbin.org/ip")
-    //     .await?
-    //     .json::<HashMap<String, String>>()
-    //     .await?;
-    // println!("{:#?}", resp);
-    Ok(())
+    // Ok(())
 }
+
+// let question = Question::new(
+//     QuestionId::from_str("1").expect("No id provided"),
+//     "First Question".to_string(),
+//     "Content of question".to_string(),
+//     Some(vec!["faq".to_string()]),
+// );
+
+// let question2 = Question::new(
+//     QuestionId::from_str("2").expect("No id provided"),
+//     "Second Question".to_string(),
+//     "Content of next question".to_string(),
+//     Some(vec!["FAQ".to_string()]),
+// );
+// println!("{:?}", question);
+
+// let resp = reqwest::get("https:/ /httpbin.org/ip")
+//     .await?
+//     .json::<HashMap<String, String>>()
+//     .await?;
+// println!("{:#?}", resp);
 
 // let hello = warp::path("hello")
 //     .and(warp::path::param())
