@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::io::{Error, ErrorKind};
-use std::str::FromStr;
+// use std::io::{Error, ErrorKind};
+// use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use warp::cors::CorsForbidden;
 use warp::{http::Method, http::StatusCode, reject::Reject, Filter, Rejection, Reply};
 
+#[derive(Clone)]
 struct Store {
     questions: HashMap<QuestionId, Question>,
 }
@@ -23,22 +24,22 @@ impl Store {
     //     self
     // }
 
-    fn init(self) -> Self {
-        let question = Question::new(
-            QuestionId::from_str("1").expect("Id not set"),
-            "How?".to_string(),
-            "Please help!".to_string(),
-            Some(vec!["general".to_string()]),
-        );
-        self.add_question(question)
-    }
+    // fn init(self) -> Self {
+    //     let question = Question::new(
+    //         QuestionId::from_str("1").expect("Id not set"),
+    //         "How?".to_string(),
+    //         "Please help!".to_string(),
+    //         Some(vec!["general".to_string()]),
+    //     );
+    //     self.add_question(question)
+    // }
 
-    fn init() -> HashMap {
+    fn init() -> HashMap<QuestionId, Question> {
         let file = include_str!("../questions.json");
         serde_json::from_str(file).expect("can't read questions.json")
     }
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Question {
     id: QuestionId,
     title: String,
@@ -48,56 +49,61 @@ struct Question {
 #[derive(Debug, Serialize, Eq, PartialEq, Hash, Clone, Deserialize)]
 struct QuestionId(String);
 
-impl Question {
-    fn new(id: QuestionId, title: String, content: String, tags: Option<Vec<String>>) -> Self {
-        Question {
-            id,
-            title,
-            content,
-            tags,
-        }
-    }
-}
+// impl Question {
+//     fn new(id: QuestionId, title: String, content: String, tags: Option<Vec<String>>) -> Self {
+//         Question {
+//             id,
+//             title,
+//             content,
+//             tags,
+//         }
+//     }
+// }
 
-impl FromStr for QuestionId {
-    type Err = std::io::Error;
+// impl FromStr for QuestionId {
+//     type Err = std::io::Error;
 
-    fn from_str(id: &str) -> Result<Self, Self::Err> {
-        match id.is_empty() {
-            false => Ok(QuestionId(id.to_string())),
-            true => Err(Error::new(ErrorKind::InvalidInput, "No id provided")),
-        }
-    }
-}
+//     fn from_str(id: &str) -> Result<Self, Self::Err> {
+//         match id.is_empty() {
+//             false => Ok(QuestionId(id.to_string())),
+//             true => Err(Error::new(ErrorKind::InvalidInput, "No id provided")),
+//         }
+//     }
+// }
 
-#[derive(Debug)]
-struct InvalidId;
-impl Reject for InvalidId {}
+// #[derive(Debug)]
+// struct InvalidId;
+// impl Reject for InvalidId {}
 
-async fn get_questions() -> Result<impl warp::Reply, warp::Rejection> {
-    let question = Question::new(
-        QuestionId::from_str("1").expect("No id provided"),
-        "First Question".to_string(),
-        "Content of question".to_string(),
-        Some(vec!["FAQ".to_string()]),
-    );
+async fn get_questions(store: Store) -> Result<impl warp::Reply, warp::Rejection> {
+    // let question = Question::new(
+    //     QuestionId::from_str("1").expect("No id provided"),
+    //     "First Question".to_string(),
+    //     "Content of question".to_string(),
+    //     Some(vec!["FAQ".to_string()]),
+    // );
 
-    match question.id.0.parse::<i32>() {
-        Err(_) => Err(warp::reject::custom(InvalidId)),
-        Ok(_) => Ok(warp::reply::json(&question)),
-    }
+    // match question.id.0.parse::<i32>() {
+    //     Err(_) => Err(warp::reject::custom(InvalidId)),
+    //     Ok(_) => Ok(warp::reply::json(&question)),
+    // }
+
+    let res: Vec<Question> = store.questions.values().cloned().collect();
+    Ok(warp::reply::json(&res))
 }
 
 async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
     // println!("{:?}", r);
-    if let Some(InvalidId) = r.find() {
+    if let Some(error) = r.find::<CorsForbidden>() {
         Ok(warp::reply::with_status(
-            "No valid ID presented",
-            StatusCode::UNPROCESSABLE_ENTITY,
+            // "No valid ID presented",
+            // StatusCode::UNPROCESSABLE_ENTITY,
+            error.to_string(),
+            StatusCode::FORBIDDEN,
         ))
     } else {
         Ok(warp::reply::with_status(
-            "Route not found",
+            "Route not found".to_string(),
             StatusCode::NOT_FOUND,
         ))
     }
@@ -107,18 +113,22 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
 async fn main()
 // -> Result<(), Box<dyn std::error::Error>>
 {
+    let store = Store::new();
+    let store_filter = warp::any().map(move || store.clone());
+
     let cors = warp::cors()
         .allow_any_origin()
         .allow_header("content-type")
         .allow_methods(&[Method::PUT, Method::DELETE, Method::POST, Method::GET]);
 
-    let get_items = warp::get()
+    let get_questions = warp::get()
         .and(warp::path("questions"))
         .and(warp::path::end())
+        .and(store_filter)
         .and_then(get_questions)
         .recover(return_error);
 
-    let routes = get_items.with(cors);
+    let routes = get_questions.with(cors);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
