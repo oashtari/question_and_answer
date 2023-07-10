@@ -1,18 +1,51 @@
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::io::{Error, ErrorKind};
 use std::str::FromStr;
 
-use serde::Serialize;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 use warp::cors::CorsForbidden;
 use warp::{http::Method, http::StatusCode, reject::Reject, Filter, Rejection, Reply};
-#[derive(Debug, Serialize)]
+
+struct Store {
+    questions: HashMap<QuestionId, Question>,
+}
+
+impl Store {
+    fn new() -> Self {
+        Store {
+            questions: HashMap::new(),
+        }
+    }
+
+    // fn add_question(mut self, question: Question) -> Self {
+    //     self.questions.insert(question.id.clone(), question);
+    //     self
+    // }
+
+    fn init(self) -> Self {
+        let question = Question::new(
+            QuestionId::from_str("1").expect("Id not set"),
+            "How?".to_string(),
+            "Please help!".to_string(),
+            Some(vec!["general".to_string()]),
+        );
+        self.add_question(question)
+    }
+
+    fn init() -> HashMap {
+        let file = include_str!("../questions.json");
+        serde_json::from_str(file).expect("can't read questions.json")
+    }
+}
+#[derive(Debug, Serialize, Deserialize)]
 struct Question {
     id: QuestionId,
     title: String,
     content: String,
     tags: Option<Vec<String>>,
 }
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Eq, PartialEq, Hash, Clone, Deserialize)]
 struct QuestionId(String);
 
 impl Question {
