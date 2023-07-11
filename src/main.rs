@@ -49,6 +49,30 @@ struct Question {
 #[derive(Debug, Serialize, Eq, PartialEq, Hash, Clone, Deserialize)]
 struct QuestionId(String);
 
+#[derive(Debug)]
+enum Error {
+    ParseError(std::num::ParseIntError),
+    MissingParameters,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            Error::ParseError(ref err) => {
+                write!(f, "Cannot parse parameter: {}", err)
+            }
+            Error::MissingParameters => write!(f, "Missing parameter."),
+        }
+    }
+}
+
+impl Reject for Error {}
+
+#[derive(Debug)]
+struct Pagination {
+    start: usize,
+    end: usize,
+}
 // impl Question {
 //     fn new(id: QuestionId, title: String, content: String, tags: Option<Vec<String>>) -> Self {
 //         Question {
@@ -90,7 +114,6 @@ async fn get_questions(
     //     Err(_) => Err(warp::reject::custom(InvalidId)),
     //     Ok(_) => Ok(warp::reply::json(&question)),
     // }
-    println!("{:?}", params);
 
     // USING MATCH
     // match params.get("start") {
@@ -98,20 +121,33 @@ async fn get_questions(
     //     None => println!("No start value"),
     // }
 
-    let mut start = 0;
+    // CODE BEFORE PULLING OUT LOGIC INTO SEPARATE FUNCITON
+    // let mut start = 0;
 
-    if let Some(n) = params.get("start") {
-        start = n.parse::<usize>().expect("Could not parse start.")
+    // if let Some(n) = params.get("start") {
+    //     start = n.parse::<usize>().expect("Could not parse start.")
+    // }
+    // println!("{}", start);
+
+    if !params.is_empty() {
+        let pagination = extract_pagination(params)?;
+        let res: Vec<Question> = store.questions.values().cloned().collect();
+        let res = &res[pagination.start..pagination.end];
+        Ok(warp::reply::json(&res))
+    } else {
+        let res: Vec<Question> = store.questions.values().cloned().collect();
+        Ok(warp::reply::json(&res))
     }
-    println!("{}", start);
-
-    let res: Vec<Question> = store.questions.values().cloned().collect();
-    Ok(warp::reply::json(&res))
 }
 
 async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
     // println!("{:?}", r);
-    if let Some(error) = r.find::<CorsForbidden>() {
+    if let Some(error) = r.find::<Error>() {
+        Ok(warp::reply::with_status(
+            error.to_string(),
+            StatusCode::RANGE_NOT_SATISFIABLE,
+        ))
+    } else if let Some(error) = r.find::<CorsForbidden>() {
         Ok(warp::reply::with_status(
             // "No valid ID presented",
             // StatusCode::UNPROCESSABLE_ENTITY,
@@ -126,6 +162,23 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
     }
 }
 
+fn extract_pagination(params: HashMap<String, String>) -> Result<Pagination, Error> {
+    if params.contains_key("start") && params.contains_key("end") {
+        return Ok(Pagination {
+            start: params
+                .get("start")
+                .unwrap()
+                .parse::<usize>()
+                .map_err(Error::ParseError)?,
+            end: params
+                .get("end")
+                .unwrap()
+                .parse::<usize>()
+                .map_err(Error::ParseError)?,
+        });
+    }
+    Err(Error::MissingParameters)
+}
 #[tokio::main]
 async fn main()
 // -> Result<(), Box<dyn std::error::Error>>
