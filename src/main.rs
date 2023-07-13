@@ -1,17 +1,11 @@
-use std::collections::HashMap;
-use std::hash::Hash;
-// use std::io::{Error, ErrorKind};
-// use std::str::FromStr;
+#![warn(clippy::all)]
 use handle_errors::return_error;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 mod routes;
 mod store;
 mod types;
 
-use serde::{Deserialize, Serialize};
-use warp::{http::Method, http::StatusCode, Filter};
+use warp::{http::Method, Filter};
 
 // impl Question {
 //     fn new(id: QuestionId, title: String, content: String, tags: Option<Vec<String>>) -> Self {
