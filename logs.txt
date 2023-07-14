@@ -1,0 +1,7 @@
+    Finished dev [unoptimized + debuginfo] target(s) in 0.27s
+     Running `target/debug/question_and_answer`
+[2023-07-14T12:04:06Z ERROR question_and_answer] This is an error
+[2023-07-14T12:04:06Z INFO  question_and_answer] This is info!
+[2023-07-14T12:04:06Z WARN  question_and_answer] This is a warning.
+[2023-07-14T12:04:06Z INFO  warp::server] Server::run; addr=127.0.0.1:3030
+[2023-07-14T12:04:06Z INFO  warp::server] listening on http://127.0.0.1:3030
