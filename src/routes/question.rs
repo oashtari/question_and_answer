@@ -1,6 +1,8 @@
 #![warn(clippy::all)]
 
 use std::collections::HashMap;
+
+use tracing::{info, instrument};
 use warp::http::StatusCode;
 
 use crate::store::Store;
@@ -8,10 +10,11 @@ use crate::types::pagination::extract_pagination;
 use crate::types::question::{Question, QuestionId};
 use handle_errors::Error;
 
+#[instrument]
 pub async fn get_questions(
     params: HashMap<String, String>,
     store: Store,
-    id: String,
+    // id: String, LOGGING
 ) -> Result<impl warp::Reply, warp::Rejection> {
     // let question = Question::new(
     //     QuestionId::from_str("1").expect("No id provided"),
@@ -39,16 +42,19 @@ pub async fn get_questions(
     // }
     // println!("{}", start);
 
-    log::info!("Start querying questions.");
+    // log::info!("Start querying questions."); LOGGING
+    info!("querying questions"); // TRACING
 
     if !params.is_empty() {
         let pagination = extract_pagination(params)?;
-        log::info!("{} Pagination set {:?}", id, &pagination);
+        // log::info!("{} Pagination set {:?}", id, &pagination); LOGGING
+        info!(pagination = true); // TRACING
         let res: Vec<Question> = store.questions.read().await.values().cloned().collect();
         let res = &res[pagination.start..pagination.end];
         Ok(warp::reply::json(&res))
     } else {
-        log::info!("{} No pagination used.", id);
+        // log::info!("{} No pagination used.", id); LOGGING
+        info!(pagination = false);
         let res: Vec<Question> = store.questions.read().await.values().cloned().collect();
         Ok(warp::reply::json(&res))
     }
