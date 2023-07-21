@@ -34,9 +34,7 @@ mod types;
 // impl Reject for InvalidId {}
 
 #[tokio::main]
-async fn main()
-// -> Result<(), Box<dyn std::error::Error>>
-{
+async fn main() -> Result<(), sqlx::Error> {
     // LOGGING
     // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
 
@@ -60,7 +58,10 @@ async fn main()
     let log_filter = std::env::var("RUST_LOG")
         .unwrap_or_else(|_| "practical_rust_book=info,warp=error".to_owned());
 
-    let store = store::Store::new();
+    // if you need to add a username and password,
+    // the connection would look like:
+    // "postgres:/ /username:password@localhost:5432/rustwebdev"
+    let store = store::Store::new("postgres:/ /omid:gunner@loclahost:5432/rustwebdev").await;
     let store_filter = warp::any().map(move || store.clone());
 
     // LOGGING
@@ -136,7 +137,7 @@ async fn main()
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
-    // Ok(())
+    Ok(())
 }
 
 // let question = Question::new(

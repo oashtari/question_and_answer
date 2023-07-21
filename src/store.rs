@@ -1,6 +1,8 @@
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+// use std::sync::Arc;
+// use tokio::sync::RwLock;
+use sqlx::postgres::{PgPool, PgPoolOptions, PgRow};
+use sqlx::Row;
 
 use crate::types::{
     answer::{Answer, AnswerId},
@@ -9,15 +11,27 @@ use crate::types::{
 
 #[derive(Debug, Clone)]
 pub struct Store {
-    pub questions: Arc<RwLock<HashMap<QuestionId, Question>>>,
-    pub answers: Arc<RwLock<HashMap<AnswerId, Answer>>>,
+    // PRE SQLX
+    // pub questions: Arc<RwLock<HashMap<QuestionId, Question>>>,
+    // pub answers: Arc<RwLock<HashMap<AnswerId, Answer>>>,
+    pub connection: PgPool,
 }
 
 impl Store {
-    pub fn new() -> Self {
+    pub async fn new(db_url: &str) -> Self {
+        let db_pool = match PgPoolOptions::new()
+            .max_connections(5)
+            .connect(db_url)
+            .await
+        {
+            Ok(pool) => pool,
+            Err(e) => panic!("Couldn't establish DB connection:[]", e),
+        };
         Store {
-            questions: Arc::new(RwLock::new(Self::init())),
-            answers: Arc::new(RwLock::new(HashMap::new())),
+            connection: db_pool,
+            // PRE SQLX
+            // questions: Arc::new(RwLock::new(Self::init())),
+            // answers: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
