@@ -8,4 +8,4 @@ pub struct Question {
     pub tags: Option<Vec<String>>,
 }
 #[derive(Debug, Serialize, Eq, PartialEq, Hash, Clone, Deserialize)]
-pub struct QuestionId(pub String);
+pub struct QuestionId(pub i32);
