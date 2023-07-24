@@ -3,25 +3,31 @@ use warp::http::StatusCode;
 
 use crate::store::Store;
 use crate::types::{
-    answer::{Answer, AnswerId},
+    answer::{Answer, AnswerId, NewAnswer},
     question::QuestionId,
 };
 
 pub async fn add_answer(
     store: Store,
-    params: HashMap<String, String>,
+    new_answer: NewAnswer,
+    // params: HashMap<String, String>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let answer = Answer {
-        id: AnswerId("1".to_string()),
-        content: params.get("content").unwrap().to_string(),
-        question_id: QuestionId(params.get("questionId").unwrap().to_string()),
-    };
+    match store.add_answer(new_answer).await {
+        Ok(_) => Ok(warp::reply::with_status("Answer added", StatusCode::OK)),
+        Err(e) => Err(warp::reject::custom(e)),
+    }
 
-    store
-        .answers
-        .write()
-        .await
-        .insert(answer.id.clone(), answer);
+    // let answer = Answer {
+    //     id: AnswerId("1".to_string()),
+    //     content: params.get("content").unwrap().to_string(),
+    //     question_id: QuestionId(params.get("questionId").unwrap().to_string()),
+    // };
 
-    Ok(warp::reply::with_status("Answer added", StatusCode::OK))
+    // store
+    //     .answers
+    //     .write()
+    //     .await
+    //     .insert(answer.id.clone(), answer);
+
+    // Ok(warp::reply::with_status("Answer added", StatusCode::OK))
 }

@@ -2,7 +2,7 @@ use handle_errors::Error;
 use std::collections::HashMap;
 
 /// Pagination struct that is getting extracted from query params
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Pagination {
     /// The index of the first item that has to be returned
     pub limit: Option<u32>,
@@ -25,7 +25,7 @@ pub struct Pagination {
 /// ```
 pub fn extract_pagination(params: HashMap<String, String>) -> Result<Pagination, Error> {
     // could be improved in the future
-    if params.contains_key("start") && params.contains_key("end") {
+    if params.contains_key("limit") && params.contains_key("offset") {
         return Ok(Pagination {
             // Takes the limit parameter in the query and tries to convert it to a number
             limit: Some(
