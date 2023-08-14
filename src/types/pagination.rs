@@ -5,9 +5,9 @@ use std::collections::HashMap;
 #[derive(Default, Debug)]
 pub struct Pagination {
     /// The index of the first item that has to be returned
-    pub limit: Option<u32>,
+    pub limit: Option<i32>,
     /// The index of the last item that has to be returned
-    pub offset: u32,
+    pub offset: i32,
 }
 
 /// Extract query parameters from the '/questions' route
@@ -32,7 +32,7 @@ pub fn extract_pagination(params: HashMap<String, String>) -> Result<Pagination,
                 params
                     .get("limit")
                     .unwrap()
-                    .parse::<u32>()
+                    .parse::<i32>()
                     .map_err(Error::ParseError)?,
             ),
             // OLD CODE
@@ -45,7 +45,7 @@ pub fn extract_pagination(params: HashMap<String, String>) -> Result<Pagination,
             offset: params
                 .get("offset")
                 .unwrap()
-                .parse::<u32>()
+                .parse::<i32>()
                 .map_err(Error::ParseError)?,
             // OLD CODE
             // end: params

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 // use std::sync::Arc;
-// use tokio::sync::RwLock;
 use sqlx::postgres::{PgPool, PgPoolOptions, PgRow};
 use sqlx::Row;
+use tokio::sync::RwLock;
 
 use handle_errors::Error;
 
@@ -20,6 +20,23 @@ pub struct Store {
 }
 
 impl Store {
+    // pub async fn new(db_url: &str) -> Self {
+    //     let db_pool = match PgPoolOptions::new()
+    //         .max_connections(5)
+    //         .connect(db_url)
+    //         .await
+    //     {
+    //         Ok(pool) => pool,
+    //         Err(e) => panic!("Couldn't establish DB connection:[]", e),
+    //     };
+    //     Store {
+    //         connection: db_pool,
+    //         // PRE SQLX
+    //         // questions: Arc::new(RwLock::new(Self::init())),
+    //         // answers: Arc::new(RwLock::new(HashMap::new())),
+    //     }
+    // }
+
     pub async fn new(db_url: &str) -> Self {
         let db_pool = match PgPoolOptions::new()
             .max_connections(5)
@@ -27,20 +44,18 @@ impl Store {
             .await
         {
             Ok(pool) => pool,
-            Err(e) => panic!("Couldn't establish DB connection:[]"),
+            Err(e) => panic!("Couldn't establish DB connection: {}", e),
         };
+
         Store {
             connection: db_pool,
-            // PRE SQLX
-            // questions: Arc::new(RwLock::new(Self::init())),
-            // answers: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
     pub async fn get_questions(
         &self,
-        limit: Option<u32>,
-        offset: u32,
+        limit: Option<i32>,
+        offset: i32,
     ) -> Result<Vec<Question>, Error> {
         match sqlx::query("SELECT * from questions LIMIT $1 OFFSET $2")
             .bind(limit)
