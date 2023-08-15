@@ -77,7 +77,7 @@ impl Store {
         }
     }
 
-    pub async fn add_question(&self, new_question: NewQuestion) -> Result<Question, sqlx::Error> {
+    pub async fn add_question(&self, new_question: NewQuestion) -> Result<Question, Error> {
         match sqlx::query("INSERT INTO questions (title, content, tags) VALUES ($1, $2, $3) ")
             .bind(new_question.title)
             .bind(new_question.content)
@@ -92,7 +92,10 @@ impl Store {
             .await
         {
             Ok(question) => Ok(question),
-            Err(e) => Err(e),
+            Err(e) => {
+                tracing::event!(tracing::Level::ERROR, "{:?}", e);
+                Err(Error::DatabaseQueryError)
+            }
         }
     }
 
@@ -100,7 +103,7 @@ impl Store {
         &self,
         question: Question,
         question_id: i32,
-    ) -> Result<Question, sqlx::Error> {
+    ) -> Result<Question, Error> {
         match sqlx::query("UPDATE questions SET title = $1, content = $2, tags = $3 WHERE id = $4 RETURNING id, table, content, tags")
         .bind(question.title)
         .bind(question.content)
@@ -115,18 +118,24 @@ impl Store {
         .fetch_one(&self.connection)
         .await {
             Ok(question) => Ok(question),
-            Err(e) => Err(e)
+            Err(e) => {
+                tracing::event!(tracing::Level::ERROR, "{:?}", e);
+                Err(Error::DatabaseQueryError)
+            }
         }
     }
 
-    pub async fn delete_question(&self, question_id: i32) -> Result<bool, sqlx::Error> {
+    pub async fn delete_question(&self, question_id: i32) -> Result<bool, Error> {
         match sqlx::query("DELETE from questions WHERE id = $1")
             .bind(question_id)
             .execute(&self.connection)
             .await
         {
             Ok(_) => Ok(true),
-            Err(e) => Err(e),
+            Err(e) => {
+                tracing::event!(tracing::Level::ERROR, "{:?}", e);
+                Err(Error::DatabaseQueryError)
+            }
         }
     }
 
