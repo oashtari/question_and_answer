@@ -61,9 +61,14 @@ async fn main() -> Result<(), sqlx::Error> {
     // if you need to add a username and password,
     // the connection would look like:
     // "postgres:/ /username:password@localhost:5432/rustwebdev"
-    let store = store::Store::new("postgres://localhost:5432/rustwebdev").await;
-    let store_filter = warp::any().map(move || store.clone());
+    let store = store::Store::new("postgres:/ /localhost:5432/rustwebdev").await;
 
+    sqlx::migrate!()
+        .run(&store.clone().connection)
+        .await
+        .expect("Cannot run migration");
+
+    let store_filter = warp::any().map(move || store.clone());
     // LOGGING
     // let id_filter = warp::any().map(|| uuid::Uuid::new_v4().to_string());
 
