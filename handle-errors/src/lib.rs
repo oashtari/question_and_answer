@@ -1,3 +1,4 @@
+use reqwest::Error as ReqwestError;
 use warp::{
     filters::{body::BodyDeserializeError, cors::CorsForbidden},
     http::StatusCode,
@@ -14,6 +15,7 @@ pub enum Error {
     MissingParameters,
     // QuestionNotFound,
     DatabaseQueryError,
+    ExternalAPIError(ReqwestError),
 }
 
 impl std::fmt::Display for Error {
@@ -25,6 +27,7 @@ impl std::fmt::Display for Error {
             Error::MissingParameters => write!(f, "Missing parameter."),
             // Error::QuestionNotFound => write!(f, "Question not found."),
             Error::DatabaseQueryError => write!(f, "Cannot update, invalid data."),
+            Error::ExternalAPIError(err) => write!(f, "Cannot execute: {}", err),
         }
     }
 }
@@ -40,6 +43,12 @@ pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
         Ok(warp::reply::with_status(
             crate::Error::DatabaseQueryError.to_string(),
             StatusCode::UNPROCESSABLE_ENTITY,
+        ))
+    } else if let Some(crate::Error::ExternalAPIError(e)) = r.find() {
+        event!(Level::ERROR, "{}", e);
+        Ok(warp::reply::with_status(
+            "Internal server error".to_string(),
+            StatusCode::INTERNAL_SERVER_ERROR,
         ))
     } else if let Some(error) = r.find::<CorsForbidden>() {
         event!(Level::ERROR, "CORS forbidden error: {}", error);
