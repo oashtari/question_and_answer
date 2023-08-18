@@ -16,6 +16,20 @@ pub enum Error {
     // QuestionNotFound,
     DatabaseQueryError,
     ExternalAPIError(ReqwestError),
+    ClientError(APILayerError),
+    ServerError(APILayerError),
+}
+
+#[derive(Debug, Clone)]
+pub struct APILayerError {
+    pub status: u16,
+    pub message: String,
+}
+
+impl std::fmt::Display for APILayerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Status: {}, Message: {}", self.status, self.message)
+    }
 }
 
 impl std::fmt::Display for Error {
@@ -28,6 +42,8 @@ impl std::fmt::Display for Error {
             // Error::QuestionNotFound => write!(f, "Question not found."),
             Error::DatabaseQueryError => write!(f, "Cannot update, invalid data."),
             Error::ExternalAPIError(err) => write!(f, "Cannot execute: {}", err),
+            Error::ClientError(err) => write!(f, "External client error: {}", err),
+            Error::ServerError(err) => write!(f, "External server error: {}", err),
         }
     }
 }
@@ -45,6 +61,18 @@ pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
             StatusCode::UNPROCESSABLE_ENTITY,
         ))
     } else if let Some(crate::Error::ExternalAPIError(e)) = r.find() {
+        event!(Level::ERROR, "{}", e);
+        Ok(warp::reply::with_status(
+            "Internal server error".to_string(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    } else if let Some(crate::Error::ClientError(e)) = r.find() {
+        event!(Level::ERROR, "{}", e);
+        Ok(warp::reply::with_status(
+            "Internal server error".to_string(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    } else if let Some(crate::Error::ServerError(e)) = r.find() {
         event!(Level::ERROR, "{}", e);
         Ok(warp::reply::with_status(
             "Internal server error".to_string(),
