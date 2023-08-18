@@ -12,29 +12,8 @@ use crate::store::Store;
 use crate::types::pagination::{self, extract_pagination, Pagination};
 use crate::types::question::{self, NewQuestion, Question, QuestionId};
 // use handle_errors::Error;
+use crate::profanity::check_profanity;
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct APIResponse {
-    message: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct BadWord {
-    original: String,
-    word: String,
-    deviations: i64,
-    info: i64,
-    #[serde(rename = "replacedLen")]
-    replaced_len: i64,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct BadWordsResponse {
-    content: String,
-    bad_words_total: i64,
-    bad_words_list: Vec<BadWord>,
-    censored_content: String,
-}
 #[instrument]
 pub async fn get_questions(
     params: HashMap<String, String>,
@@ -110,26 +89,43 @@ pub async fn add_question(
     store: Store,
     new_question: NewQuestion,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let client = reqwest::Client::new();
-    let res = client
-        .post("https:/ /api.apilayer.com/bad_words?censor_character=*")
-        .header("apikey", "JvpKmotUBxfl5n8OxmTOwfrmZrtAXKNI")
-        .body(new_question.content)
-        .send()
-        .await
-        .map_err(|e| handle_errors::Error::ExternalAPIError(e))?;
-    // .text()
-    // .await
-    // .map_err(|e| handle_errors::Error::ExternalAPIError(e))?;
-    if !res.status().is_success() {
-        if res.status().is_client_error() {
-            let err = transform_error(res).await;
-            return Err(handle_errors::Error::ClientError(err).into());
-        } else {
-            let err = transform_error(res).await;
-            return Err(handle_errors::Error::ServerError(err).into());
+    let title = match check_profanity(new_question.title).await {
+        Ok(res) => {
+            println!("{:?}", res);
+            res
         }
-    }
+        Err(e) => return Err(warp::reject::custom(e)),
+    };
+
+    let content = match check_profanity(new_question.content).await {
+        Ok(res) => {
+            println!("{:?}", res);
+            res
+        }
+        Err(e) => return Err(warp::reject::custom(e)),
+    };
+
+    // OLD CODE BEFORE PROFANITY.RS FILE
+    // let client = reqwest::Client::new();
+    // let res = client
+    //     .post("https:/ /api.apilayer.com/bad_words?censor_character=*")
+    //     .header("apikey", "JvpKmotUBxfl5n8OxmTOwfrmZrtAXKNI")
+    //     .body(new_question.content)
+    //     .send()
+    //     .await
+    //     .map_err(|e| handle_errors::Error::ExternalAPIError(e))?;
+    // // .text()
+    // // .await
+    // // .map_err(|e| handle_errors::Error::ExternalAPIError(e))?;
+    // if !res.status().is_success() {
+    //     if res.status().is_client_error() {
+    //         let err = transform_error(res).await;
+    //         return Err(handle_errors::Error::ClientError(err).into());
+    //     } else {
+    //         let err = transform_error(res).await;
+    //         return Err(handle_errors::Error::ServerError(err).into());
+    //     }
+    // }
 
     // BEFORE ADDING TYPES FOR API RESPONSES
     // match res.error_for_status() {
@@ -150,13 +146,14 @@ pub async fn add_question(
     //     )),
     // }
 
-    let res = res
-        .json::<BadWordsResponse>()
-        .await
-        .map_err(|e| handle_errors::Error::ExternalAPIError(e))?;
-    let content = res.censored_content;
+    // let res = res
+    //     .json::<BadWordsResponse>()
+    //     .await
+    //     .map_err(|e| handle_errors::Error::ExternalAPIError(e))?;
+    // let content = res.censored_content;
+
     let question = NewQuestion {
-        title: new_question.title,
+        title,
         content,
         tags: new_question.tags,
     };
@@ -171,13 +168,6 @@ pub async fn add_question(
     //     .insert(question.id.clone(), question);
 
     // Ok(warp::reply::with_status("Question added.", StatusCode::OK))
-}
-
-async fn transform_error(res: reqwest::Response) -> handle_errors::APILayerError {
-    handle_errors::APILayerError {
-        status: res.status().as_u16(),
-        message: res.json::<APIResponse>().await.unwrap().message,
-    }
 }
 
 pub async fn update_question(

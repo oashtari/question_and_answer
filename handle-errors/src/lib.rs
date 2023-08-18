@@ -63,19 +63,19 @@ pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
     } else if let Some(crate::Error::ExternalAPIError(e)) = r.find() {
         event!(Level::ERROR, "{}", e);
         Ok(warp::reply::with_status(
-            "Internal server error".to_string(),
+            "Internal server error ONE".to_string(),
             StatusCode::INTERNAL_SERVER_ERROR,
         ))
     } else if let Some(crate::Error::ClientError(e)) = r.find() {
         event!(Level::ERROR, "{}", e);
         Ok(warp::reply::with_status(
-            "Internal server error".to_string(),
+            "Internal server error TWO".to_string(),
             StatusCode::INTERNAL_SERVER_ERROR,
         ))
     } else if let Some(crate::Error::ServerError(e)) = r.find() {
         event!(Level::ERROR, "{}", e);
         Ok(warp::reply::with_status(
-            "Internal server error".to_string(),
+            "Internal server error THREE".to_string(),
             StatusCode::INTERNAL_SERVER_ERROR,
         ))
     } else if let Some(error) = r.find::<CorsForbidden>() {
