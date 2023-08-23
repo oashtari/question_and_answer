@@ -7,6 +7,7 @@ use tokio::sync::RwLock;
 
 use handle_errors::Error;
 
+use crate::types::account::AccountId;
 use crate::types::{
     account::Account,
     answer::{Answer, AnswerId, NewAnswer},
@@ -212,6 +213,24 @@ impl Store {
         }
     }
 
+    pub async fn get_account(self, email: String) -> Result<Account, Error> {
+        match sqlx::query("SELECT * from account where email = $1")
+            .bind(email)
+            .map(|row: PgRow| Account {
+                id: Some(AccountId(row.get("id"))),
+                email: row.get("email"),
+                password: row.get("password"),
+            })
+            .fetch_one(&self.connection)
+            .await
+        {
+            Ok(account) => Ok(account),
+            Err(error) => {
+                tracing::event!(tracing::Level::ERROR, "{:?}", error);
+                Err(Error::DatabaseQueryError(error))
+            }
+        }
+    }
     fn init() -> HashMap<QuestionId, Question> {
         let file = include_str!("../questions.json");
         serde_json::from_str(file).expect("can't read questions.json")
