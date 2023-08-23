@@ -22,3 +22,6 @@ sqlx = { version = "0.7.1", features = [
     "migrate",
     "postgres",
 ] }
+rand = "0.8"
+rust-argon2 = "1.0"
+paseto = "2.0"
