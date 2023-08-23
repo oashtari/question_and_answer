@@ -15,7 +15,7 @@ pub enum Error {
     ParseError(std::num::ParseIntError),
     MissingParameters,
     // QuestionNotFound,
-    DatabaseQueryError,
+    DatabaseQueryError(sqlx::Error),
     ReqwestAPIError(ReqwestError),
     MiddlewareReqwestAPIError(MiddlewareReqwestError),
     // ExternalAPIError(ReqwestError),
@@ -43,7 +43,7 @@ impl std::fmt::Display for Error {
             }
             Error::MissingParameters => write!(f, "Missing parameter."),
             // Error::QuestionNotFound => write!(f, "Question not found."),
-            Error::DatabaseQueryError => write!(f, "Cannot update, invalid data."),
+            Error::DatabaseQueryError(_) => write!(f, "Cannot update, invalid data."),
             Error::ReqwestAPIError(err) => write!(f, "External API error: {}", err),
             Error::MiddlewareReqwestAPIError(err) => write!(f, "External API error: {}", err),
             Error::ClientError(err) => write!(f, "External client error: {}", err),
@@ -54,16 +54,36 @@ impl std::fmt::Display for Error {
 
 impl Reject for Error {}
 
+const DUPLICATE_KEY: i32 = 23505;
 #[instrument]
 pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
     // println!("{:?}", r);
 
-    if let Some(crate::Error::DatabaseQueryError) = r.find() {
+    if let Some(crate::Error::DatabaseQueryError(e)) = r.find() {
         event!(Level::ERROR, "Database query error");
-        Ok(warp::reply::with_status(
-            crate::Error::DatabaseQueryError.to_string(),
-            StatusCode::UNPROCESSABLE_ENTITY,
-        ))
+        match e {
+            sqlx::Error::Database(err) => {
+                if err.code().unwrap().parse::<i32>().unwrap() == DUPLICATE_KEY {
+                    Ok(warp::reply::with_status(
+                        "Account already exists".to_string(),
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                    ))
+                } else {
+                    Ok(warp::reply::with_status(
+                        "Cannot update data".to_string(),
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                    ))
+                }
+            }
+            _ => Ok(warp::reply::with_status(
+                "Cannot update data".to_string(),
+                StatusCode::UNPROCESSABLE_ENTITY,
+            )),
+        }
+        // Ok(warp::reply::with_status(
+        //     crate::Error::DatabaseQueryError.to_string(),
+        //     StatusCode::UNPROCESSABLE_ENTITY,
+        // ))
     } else if let Some(crate::Error::ReqwestAPIError(e)) = r.find() {
         event!(Level::ERROR, "{}", e);
         Ok(warp::reply::with_status(
