@@ -25,6 +25,7 @@ pub enum Error {
     ClientError(APILayerError),
     ServerError(APILayerError),
     CannotDecryptToken,
+    Unauthorized,
 }
 
 #[derive(Debug, Clone)]
@@ -54,12 +55,14 @@ impl std::fmt::Display for Error {
             Error::MiddlewareReqwestAPIError(err) => write!(f, "External API error: {}", err),
             Error::ClientError(err) => write!(f, "External client error: {}", err),
             Error::ServerError(err) => write!(f, "External server error: {}", err),
-            Error::CannotDecryptToken => write!(f, "Cannot decrypt token: {}"),
+            Error::CannotDecryptToken => write!(f, "Cannot decrypt token"),
+            Error::Unauthorized => write!(f, "No permission to change the underlying resource."),
         }
     }
 }
 
 impl Reject for Error {}
+impl Reject for APILayerError {}
 
 const DUPLICATE_KEY: i32 = 23505;
 #[instrument]
@@ -96,6 +99,12 @@ pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
         Ok(warp::reply::with_status(
             "Internal server error ONE".to_string(),
             StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    } else if let Some(crate::Error::Unauthorized) = r.find() {
+        event!(Level::ERROR, "Not matching accound id");
+        Ok(warp::reply::with_status(
+            "No permission to change underlying resource".to_string(),
+            StatusCode::UNAUTHORIZED,
         ))
     } else if let Some(crate::Error::WrongPassword) = r.find() {
         event!(Level::ERROR, "Entered wrong password.");

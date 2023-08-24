@@ -7,9 +7,8 @@ use tokio::sync::RwLock;
 
 use handle_errors::Error;
 
-use crate::types::account::AccountId;
 use crate::types::{
-    account::Account,
+    account::{Account, AccountId},
     answer::{Answer, AnswerId, NewAnswer},
     question::{NewQuestion, Question, QuestionId},
 };
@@ -80,11 +79,16 @@ impl Store {
         }
     }
 
-    pub async fn add_question(self, new_question: NewQuestion) -> Result<Question, Error> {
-        match sqlx::query("INSERT INTO questions (title, content, tags) VALUES ($1, $2, $3) ")
+    pub async fn add_question(
+        self,
+        new_question: NewQuestion,
+        account_id: AccountId,
+    ) -> Result<Question, Error> {
+        match sqlx::query("INSERT INTO questions (title, content, tags, account_id) VALUES ($1, $2, $3, $4) RETURNING id, title, content, tags")
             .bind(new_question.title)
             .bind(new_question.content)
             .bind(new_question.tags)
+            .bind(account_id.0)
             .map(|row: PgRow| Question {
                 id: QuestionId(row.get("id")),
                 title: row.get("title"),
@@ -105,13 +109,17 @@ impl Store {
     pub async fn update_question(
         self,
         question: Question,
-        question_id: i32,
+        id: i32,
+        account_id: AccountId,
     ) -> Result<Question, Error> {
-        match sqlx::query("UPDATE questions SET title = $1, content = $2, tags = $3 WHERE id = $4 RETURNING id, table, content, tags")
+        println!("{}", account_id.0);
+
+        match sqlx::query("UPDATE questions SET title = $1, content = $2, tags = $3 WHERE id = $4 AND account_id = $5 RETURNING id, table, content, tags")
         .bind(question.title)
         .bind(question.content)
         .bind(question.tags)
-        .bind(question_id)
+        .bind(id)
+        .bind(account_id.0)
         .map(|row: PgRow| Question {
             id: QuestionId(row.get("id")),
             title: row.get("title"),
@@ -128,9 +136,10 @@ impl Store {
         }
     }
 
-    pub async fn delete_question(self, question_id: i32) -> Result<bool, Error> {
-        match sqlx::query("DELETE from questions WHERE id = $1")
-            .bind(question_id)
+    pub async fn delete_question(self, id: i32, account_id: &AccountId) -> Result<bool, Error> {
+        match sqlx::query("DELETE from questions WHERE id = $1 AND account_id = $2")
+            .bind(id)
+            .bind(account_id.0)
             .execute(&self.connection)
             .await
         {
@@ -142,19 +151,26 @@ impl Store {
         }
     }
 
-    pub async fn add_answer(self, new_answer: NewAnswer) -> Result<bool, Error> {
-        match sqlx::query("INSERT INTO answers (content, question_id) VALUES ($1, $2)")
-            .bind(new_answer.content)
-            .bind(new_answer.question_id.0)
-            .map(|row: PgRow| Answer {
-                id: AnswerId(row.get("id")),
-                content: row.get("content"),
-                question_id: QuestionId(row.get("question_id")),
-            })
-            .fetch_one(&self.connection)
-            .await
+    pub async fn add_answer(
+        self,
+        new_answer: NewAnswer,
+        account_id: AccountId,
+    ) -> Result<Answer, Error> {
+        match sqlx::query(
+            "INSERT INTO answers (content, corresponding_question, account_id) VALUES ($1, $2, $3)",
+        )
+        .bind(new_answer.content)
+        .bind(new_answer.question_id.0)
+        .bind(account_id.0)
+        .map(|row: PgRow| Answer {
+            id: AnswerId(row.get("id")),
+            content: row.get("content"),
+            question_id: QuestionId(row.get("question_id")),
+        })
+        .fetch_one(&self.connection)
+        .await
         {
-            Ok(_) => Ok(true),
+            Ok(answer) => Ok(answer),
             Err(error) => {
                 tracing::event!(
                     tracing::Level::ERROR,
@@ -231,6 +247,26 @@ impl Store {
             }
         }
     }
+
+    pub async fn is_question_owner(
+        &self,
+        question_id: i32,
+        account_id: &AccountId,
+    ) -> Result<bool, Error> {
+        match sqlx::query("SELECT * from questions where id = $1 and account_id = $2")
+            .bind(question_id)
+            .bind(account_id.0)
+            .fetch_optional(&self.connection)
+            .await
+        {
+            Ok(question) => Ok(question.is_some()),
+            Err(e) => {
+                tracing::event!(tracing::Level::ERROR, "{:?}", e);
+                Err(Error::DatabaseQueryError(e))
+            }
+        }
+    }
+
     fn init() -> HashMap<QuestionId, Question> {
         let file = include_str!("../questions.json");
         serde_json::from_str(file).expect("can't read questions.json")
