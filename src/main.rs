@@ -4,6 +4,7 @@ use config::Config;
 use handle_errors::return_error;
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{http::Method, Filter};
+use dotenv;
 
 mod profanity;
 mod routes;
@@ -52,12 +53,24 @@ struct Args {
     /// Database naem
     #[clap(long, default_value = "rustwebdev")]
     database_name: String,
-    /// Web server port
-    port: u16,
+    // Web server port
+    // port: u16,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), sqlx::Error> {
+async fn main() -> Result<(), handle_errors::Error> {
+    dotenv::dotenv().ok();
+
+    if let Err(_) = env::var("BAD_WORDS_API_KEY") {
+        panic!("BadWords API key not set.")
+    }
+
+    if let Err(_) = env::var("PASETO_KEY") {
+        panic!("Paseto key not set.")
+    }
+
+    let port = std::env::var("PORT").ok().map(|val| val.parse::<u16>()).unwrap_or(Ok(8080)).map_err(|e| handle_errors::Error::ParseError(e))?;
+
     // LOGGING
     // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
 
@@ -107,14 +120,14 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // replace config with args
     let store = store::Store::new(&format!(
-        "postgres://{}:{}:{}",
+        "postgres://{}:{}/{}",
         args.database_host, args.database_port, args.database_name
     ))
-    .await;
+    .await.map_err(|e| handle_errors::Error::DatabaseQueryError(e))?;
 
     sqlx::migrate!()
         .run(&store.clone().connection)
-        .await?;
+        .await.map_err(|e| handle_errors::Error::MigrationError(e))?;
         // .expect("Cannot run migration");
 
     let store_filter = warp::any().map(move || store.clone());
@@ -209,9 +222,9 @@ async fn main() -> Result<(), sqlx::Error> {
         .with(warp::trace::request())
         .recover(return_error);
 
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    // warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
     // warp::serve(routes).run(([127, 0, 0, 1], config.port)).await;
-
+    warp::serve(routes).run(([127, 0, 0, 1], port)).await;
     Ok(())
 }
 
