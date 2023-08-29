@@ -30,3 +30,6 @@ config = { version = "0.13.1", features = ["toml"] }
 clap = { version = "3.1.7", features = ["derive"] }
 proc-macro2 = "1.0.37"
 dotenv = "0.15.0"
+
+[build-dependencies]
+platforms = "2.0.0"

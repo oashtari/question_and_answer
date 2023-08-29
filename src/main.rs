@@ -1,10 +1,11 @@
 #![warn(clippy::all)]
 use clap::Parser;
 use config::Config;
+use dotenv;
 use handle_errors::return_error;
+use std::env;
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{http::Method, Filter};
-use dotenv;
 
 mod profanity;
 mod routes;
@@ -45,7 +46,7 @@ struct Args {
     #[clap(short, long, default_value = "warn")]
     log_level: String,
     /// Url for postgres database
-    #[clap(long, default_value= "localhost")]
+    #[clap(long, default_value = "localhost")]
     database_host: String,
     /// PORT number for database connection
     #[clap(long, default_value = "5432")]
@@ -69,7 +70,11 @@ async fn main() -> Result<(), handle_errors::Error> {
         panic!("Paseto key not set.")
     }
 
-    let port = std::env::var("PORT").ok().map(|val| val.parse::<u16>()).unwrap_or(Ok(8080)).map_err(|e| handle_errors::Error::ParseError(e))?;
+    let port = std::env::var("PORT")
+        .ok()
+        .map(|val| val.parse::<u16>())
+        .unwrap_or(Ok(8080))
+        .map_err(|e| handle_errors::Error::ParseError(e))?;
 
     // LOGGING
     // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
@@ -123,12 +128,14 @@ async fn main() -> Result<(), handle_errors::Error> {
         "postgres://{}:{}/{}",
         args.database_host, args.database_port, args.database_name
     ))
-    .await.map_err(|e| handle_errors::Error::DatabaseQueryError(e))?;
+    .await
+    .map_err(|e| handle_errors::Error::DatabaseQueryError(e))?;
 
     sqlx::migrate!()
         .run(&store.clone().connection)
-        .await.map_err(|e| handle_errors::Error::MigrationError(e))?;
-        // .expect("Cannot run migration");
+        .await
+        .map_err(|e| handle_errors::Error::MigrationError(e))?;
+    // .expect("Cannot run migration");
 
     let store_filter = warp::any().map(move || store.clone());
     // LOGGING
@@ -221,6 +228,8 @@ async fn main() -> Result<(), handle_errors::Error> {
         .with(cors)
         .with(warp::trace::request())
         .recover(return_error);
+
+    tracing::info!("Q&A service build ID {}", env!("RUST_WEB_DEV_VERSION"));
 
     // warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
     // warp::serve(routes).run(([127, 0, 0, 1], config.port)).await;
