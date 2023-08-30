@@ -25,8 +25,8 @@ WORKDIR /app
 
 # // We copy our binary and the .env file over to 
 # // the final image to keep it small
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/rust-web-dev ./
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/question_and_answer ./
 COPY --from=builder /app/.env ./
 
 # // Executing the binary
-CMD ["/app/rust-web-dev"]
+CMD ["/app/question_and_answer"]
