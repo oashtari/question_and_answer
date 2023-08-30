@@ -39,7 +39,9 @@ impl Store {
     //     }
     // }
 
-    pub async fn new(db_url: &str) -> Self {
+    pub async fn new(db_url: &str) -> Result<Self, sqlx::Error> {
+        tracing::warn!("{}", db_url);
+
         let db_pool = match PgPoolOptions::new()
             .max_connections(5)
             .connect(db_url)
@@ -49,9 +51,9 @@ impl Store {
             Err(e) => panic!("Couldn't establish DB connection: {}", e),
         };
 
-        Store {
+        Ok(Store {
             connection: db_pool,
-        }
+        })
     }
 
     pub async fn get_questions(

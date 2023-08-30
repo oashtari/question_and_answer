@@ -45,15 +45,21 @@ struct Args {
     /// Which errors we want to log (info, warn or error)
     #[clap(short, long, default_value = "warn")]
     log_level: String,
+    /// Which PORT the server is listening to
+    #[clap(short, long, default_value = "8080")]
+    port: u16,
+    /// Database user
+    #[clap(long, default_value = "user")]
+    db_user: String,
     /// Url for postgres database
     #[clap(long, default_value = "localhost")]
-    database_host: String,
+    db_host: String,
     /// PORT number for database connection
     #[clap(long, default_value = "5432")]
-    database_port: u16,
+    db_port: u16,
     /// Database naem
     #[clap(long, default_value = "rustwebdev")]
-    database_name: String,
+    db_name: String,
     // Web server port
     // port: u16,
 }
@@ -109,6 +115,12 @@ async fn main() -> Result<(), handle_errors::Error> {
     // let log_filter = std::env::var("RUST_LOG")
     //     .unwrap_or_else(|_| "practical_rust_book=info,warp=error".to_owned());
 
+    let db_user = env::var("POSTGRES_USER").unwrap_or(args.db_user.to_owned());
+    let db_password = env::var("POSTGRES_PASSWORD").unwrap();
+    let db_host = env::var("POSTGRES_HOST").unwrap_or(args.db_host.to_owned());
+    let db_port = env::var("POSTGRES_PORT").unwrap_or(args.db_port.to_string());
+    let db_name = env::var("POSTGRES_DB").unwrap_or(args.db_name.to_owned());
+
     // after setting up setup.toml file for config variables
     // replace config with args
     let log_filter = std::env::var("RUST_LOG").unwrap_or_else(|_| {
@@ -125,8 +137,8 @@ async fn main() -> Result<(), handle_errors::Error> {
 
     // replace config with args
     let store = store::Store::new(&format!(
-        "postgres://{}:{}/{}",
-        args.database_host, args.database_port, args.database_name
+        "postgres://{}:{}@{}:{}/{}",
+        db_user, db_password, db_host, db_port, db_name
     ))
     .await
     .map_err(|e| handle_errors::Error::DatabaseQueryError(e))?;
