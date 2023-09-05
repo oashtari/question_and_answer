@@ -1,12 +1,13 @@
 #![warn(clippy::all)]
 use clap::Parser;
-use config::Config;
+// use config::Config;
 use dotenv;
 use handle_errors::return_error;
 use std::env;
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{http::Method, Filter};
 
+mod config;
 mod profanity;
 mod routes;
 mod store;
@@ -38,50 +39,8 @@ mod types;
 // struct InvalidId;
 // impl Reject for InvalidId {}
 
-// Q&A web service API
-#[derive(Parser, Debug, Default, serde::Deserialize, PartialEq)]
-#[clap(author, version, about, long_about = None)]
-struct Args {
-    /// Which errors we want to log (info, warn or error)
-    #[clap(short, long, default_value = "warn")]
-    log_level: String,
-    /// Which PORT the server is listening to
-    #[clap(short, long, default_value = "8080")]
-    port: u16,
-    /// Database user
-    #[clap(long, default_value = "user")]
-    db_user: String,
-    /// Url for postgres database
-    #[clap(long, default_value = "localhost")]
-    db_host: String,
-    /// PORT number for database connection
-    #[clap(long, default_value = "5432")]
-    db_port: u16,
-    /// Database naem
-    #[clap(long, default_value = "rustwebdev")]
-    db_name: String,
-    // Web server port
-    // port: u16,
-}
-
 #[tokio::main]
 async fn main() -> Result<(), handle_errors::Error> {
-    dotenv::dotenv().ok();
-
-    if let Err(_) = env::var("BAD_WORDS_API_KEY") {
-        panic!("BadWords API key not set.")
-    }
-
-    if let Err(_) = env::var("PASETO_KEY") {
-        panic!("Paseto key not set.")
-    }
-
-    let port = std::env::var("PORT")
-        .ok()
-        .map(|val| val.parse::<u16>())
-        .unwrap_or(Ok(8080))
-        .map_err(|e| handle_errors::Error::ParseError(e))?;
-
     // LOGGING
     // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
 
@@ -110,26 +69,30 @@ async fn main() -> Result<(), handle_errors::Error> {
     // let config = config.try_deserialize::<Args>().unwrap();
 
     // USING CLI args
-    let args = Args::parse();
+    // let args = Args::parse();  // removed once config file was created
     // TRACING
     // let log_filter = std::env::var("RUST_LOG")
     //     .unwrap_or_else(|_| "practical_rust_book=info,warp=error".to_owned());
 
-    let db_user = env::var("POSTGRES_USER").unwrap_or(args.db_user.to_owned());
-    let db_password = env::var("POSTGRES_PASSWORD").unwrap();
-    let db_host = env::var("POSTGRES_HOST").unwrap_or(args.db_host.to_owned());
-    let db_port = env::var("POSTGRES_PORT").unwrap_or(args.db_port.to_string());
-    let db_name = env::var("POSTGRES_DB").unwrap_or(args.db_name.to_owned());
+    // moved config info into its own file
+
+    let config = config::Config::new().expect("Config can't be set.");
 
     // after setting up setup.toml file for config variables
     // replace config with args
-    let log_filter = std::env::var("RUST_LOG").unwrap_or_else(|_| {
-        format!(
-            "handle_error={},rust_web_dev={},warp={}",
-            args.log_level, args.log_level, args.log_level
-        )
-    });
+    // OLD LOG FILTER
+    // let log_filter = std::env::var("RUST_LOG").unwrap_or_else(|_| {
+    //     format!(
+    //         "handle_error={},rust_web_dev={},warp={}",
+    //         args.log_level, args.log_level, args.log_level
+    //     )
+    // });
 
+    // new log filter after making config file
+    let log_filter = format!(
+        "handle_errors={},rust_web_dev={},warp={}",
+        config.log_level, config.log_level, config.log_level
+    );
     // if you need to add a username and password,
     // the connection would look like:
     // "postgres:/ /username:password@localhost:5432/rustwebdev"
@@ -138,7 +101,7 @@ async fn main() -> Result<(), handle_errors::Error> {
     // replace config with args
     let store = store::Store::new(&format!(
         "postgres://{}:{}@{}:{}/{}",
-        db_user, db_password, db_host, db_port, db_name
+        config.db_user, config.db_password, config.db_host, config.db_port, config.db_name
     ))
     .await
     .map_err(|e| handle_errors::Error::DatabaseQueryError(e))?;
@@ -245,7 +208,7 @@ async fn main() -> Result<(), handle_errors::Error> {
 
     // warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
     // warp::serve(routes).run(([127, 0, 0, 1], config.port)).await;
-    warp::serve(routes).run(([127, 0, 0, 1], port)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], config.port)).await;
     Ok(())
 }
 
