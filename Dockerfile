@@ -17,7 +17,7 @@ ENV CC_x86_64_unknown_linux_musl=x86_64-linux-gnu-gcc
 ENV CC_x86_64-unknown-linux-musl=x86_64-linux-gnu-gcc
 
 RUN cargo build --target x86_64-unknown-linux-musl --release
-
+EXPOSE 8080 
 # // We create the final Docker image “from scratch”
 FROM scratch
 
