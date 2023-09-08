@@ -65,7 +65,7 @@ mod pagination_tests {
     use super::{extract_pagination, Error, HashMap, Pagination};
 
     #[test]
-    fn valid_pagiation() {
+    fn valid_pagination() {
         let mut params = HashMap::new();
         params.insert(String::from("limit"), String::from("1"));
         params.insert(String::from("offset"), String::from("1"));
@@ -85,6 +85,41 @@ mod pagination_tests {
         let pagination_result = format!("{}", extract_pagination(params).unwrap_err());
 
         let expected = format!("{}", Error::MissingParameters);
+
+        assert_eq!(pagination_result, expected);
+    }
+
+    #[test]
+    fn missing_limit_paramater() {
+        let mut params = HashMap::new();
+        params.insert(String::from("offset"), String::from("1"));
+
+        let pagination_result = format!("{}", extract_pagination(params).unwrap_err());
+        let expected = format!("{}", Error::MissingParameters);
+
+        assert_eq!(pagination_result, expected);
+    }
+
+    #[test]
+    fn wrong_offset_type() {
+        let mut params = HashMap::new();
+        params.insert(String::from("limit"), String::from("1"));
+        params.insert(String::from("offset"), String::from("NOT_A_NUMBER"));
+        let pagination_result = format!("{}", extract_pagination(params).unwrap_err());
+
+        let expected = String::from("Cannot parse parameter: invalid digit found in string");
+
+        assert_eq!(pagination_result, expected);
+    }
+
+    #[test]
+    fn wrong_limit_type() {
+        let mut params = HashMap::new();
+        params.insert(String::from("limit"), String::from("NOT_A_NUMBER"));
+        params.insert(String::from("offset"), String::from("1"));
+        let pagination_result = format!("{}", extract_pagination(params).unwrap_err());
+
+        let expected = String::from("Cannot parse parameter: invalid digit found in string");
 
         assert_eq!(pagination_result, expected);
     }
