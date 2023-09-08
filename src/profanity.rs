@@ -21,7 +21,7 @@ pub struct BadWord {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct BadWordsResponse {
     content: String,
-    bad_words_total: i64,
+    // bad_words_total: i64,
     bad_words_list: Vec<BadWord>,
     censored_content: String,
 }
@@ -98,12 +98,14 @@ mod profanity_tests {
     async fn censor_profane_words() {
         let content = "This is a shitty sentence".to_string();
         let censored_content = check_profanity(content).await;
+        println!("THIS DAMN TEST : {:?}", &censored_content);
         assert_eq!(censored_content.unwrap(), "this is a ****** sentence");
     }
 
     async fn no_profane_words() {
         let content = "this is a sentence".to_string();
         let censored_content = check_profanity(content).await;
+        println!("THIS DAMN TEST TWO : {:?}", &censored_content);
         assert_eq!(censored_content.unwrap(), "");
     }
 }

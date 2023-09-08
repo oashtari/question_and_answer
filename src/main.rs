@@ -1,5 +1,5 @@
 #![warn(clippy::all)]
-use clap::Parser;
+// use clap::Parser;
 // use config::Config;
 use dotenv;
 use handle_errors::return_error;

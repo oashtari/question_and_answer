@@ -1,16 +1,16 @@
 #![warn(clippy::all)]
 
-use std::alloc::handle_alloc_error;
+// use std::alloc::handle_alloc_error;
 use std::collections::HashMap;
 
 use tracing::{event, info, instrument, Level};
 use warp::http::StatusCode;
 
-use serde::{Deserialize, Serialize};
+// use serde::{Deserialize, Serialize};
 
 use crate::store::Store;
-use crate::types::pagination::{self, extract_pagination, Pagination};
-use crate::types::question::{self, NewQuestion, Question, QuestionId};
+use crate::types::pagination::{extract_pagination, Pagination};
+use crate::types::question::{NewQuestion, Question};
 // use handle_errors::Error;
 use crate::profanity::check_profanity;
 use crate::types::account::Session;

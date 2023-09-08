@@ -1,13 +1,10 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use warp::http::StatusCode;
 
 use crate::profanity::check_profanity;
 use crate::store::Store;
 use crate::types::account::Session;
-use crate::types::{
-    answer::{Answer, AnswerId, NewAnswer},
-    question::QuestionId,
-};
+use crate::types::answer::NewAnswer;
 
 pub async fn add_answer(
     session: Session,

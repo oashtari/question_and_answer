@@ -60,7 +60,7 @@ pub fn extract_pagination(params: HashMap<String, String>) -> Result<Pagination,
 
 #[cfg(test)]
 mod pagination_tests {
-    use std::hash::Hash;
+    // use std::hash::Hash;
 
     use super::{extract_pagination, Error, HashMap, Pagination};
 

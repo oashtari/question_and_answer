@@ -1,8 +1,8 @@
 use argon2::{self, Config};
 use chrono::prelude::*;
-use paseto::v2::local_paseto;
+// use paseto::v2::local_paseto;
 use rand::Rng;
-use std::{future, env};
+use std::{env, future};
 use warp::{http::StatusCode, Filter};
 
 use crate::store::Store;

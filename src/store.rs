@@ -1,9 +1,9 @@
-use serde_json::error;
-use std::collections::HashMap;
+// use serde_json::error;
+// use std::collections::HashMap;
 // use std::sync::Arc;
 use sqlx::postgres::{PgPool, PgPoolOptions, PgRow};
 use sqlx::Row;
-use tokio::sync::RwLock;
+// use tokio::sync::RwLock;
 
 use handle_errors::Error;
 
@@ -269,8 +269,8 @@ impl Store {
         }
     }
 
-    fn init() -> HashMap<QuestionId, Question> {
-        let file = include_str!("../questions.json");
-        serde_json::from_str(file).expect("can't read questions.json")
-    }
+    // fn init() -> HashMap<QuestionId, Question> {
+    //     let file = include_str!("../questions.json");
+    //     serde_json::from_str(file).expect("can't read questions.json")
+    // }
 }
