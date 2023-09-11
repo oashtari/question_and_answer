@@ -1,1 +1,1 @@
-cargo:rustc-env=RUST_WEB_DEV_VERSION=1.0.0-61a605f-aarch64-macos
+cargo:rustc-env=RUST_WEB_DEV_VERSION=1.0.0-8399b4a-aarch64-macos
