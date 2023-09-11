@@ -1,4 +1,5 @@
 use question_and_answer::{config, handle_errors, oneshot, setup_store};
+use serde::{Deserialize, Serialize};
 
 #[tokio::main]
 async fn main() -> Result<(), handle_errors::Error> {
